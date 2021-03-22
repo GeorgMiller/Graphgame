@@ -9,20 +9,20 @@ seed = 42
 np.random.seed(seed)
 tf.random.set_seed(seed)
 
-epochs = 8
-mini_batch_size = 4
+epochs = 4
+mini_batch_size = 2
 decay_rate = 0.999995
-learning_rate = 2.5e-5
-lamBda = 1e-5
-weights_init = init.glorot_uniform(seed)
+learning_rate = 5e-5
+lamBda = 1
+weights_init = init.glorot_normal(42)
 pretraining_steps = 0
-batch_size = 1
-kl_diversity = False 
-cosine_diversity = False
+batch_size = 4
+kl_diversity = False
+cosine_diversity = True
 
 def normal_run_learning_rate():
     # This is the config to run the tests. First, four agents are initialized and trained for different learning_rates
-    learning_rates = [1e-4, 6e-5, 3e-5, 1e-5, 6e-6, 3e-6]
+    learning_rates = [1e-5]#, 6e-6, 3e-6]
     path = 'experiments/normal_run_learning_rate_ppo'
 
     for row, learning_rate in enumerate(learning_rates):
@@ -40,10 +40,11 @@ def normal_run_learning_rate():
                             row)
         worker.train_normal()
 
+#normal_run_learning_rate()
 
 def hypernetwork_learning_rate():
     # Then Hypernetwork is initialized and also trained for different learning rates with batch_size 1
-    learning_rates = [7.5e-5, 5e-5, 2.5e-5, 1e-5, 7.5e-6, 5e-6, 2.5e-6]
+    learning_rates = [5e-5, 7.5e-6, 5e-6, 2.5e-6]
     path = 'experiments/hypernetwork_learning_rate'
 
     for row, learning_rate in enumerate(learning_rates):
@@ -149,7 +150,7 @@ def hypernetwork_kl_diversity():
 
 def hypernetwork_cosine_diversity():
 # When the best network type is found, it is used to evaluate the different diversity terms
-    lamBdas = [1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
+    lamBdas = [0.15, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8]
     path = 'experiments/hypernetwork_cosine_diversity'
     cosine_diversity = True
 
@@ -168,13 +169,13 @@ def hypernetwork_cosine_diversity():
                             row)
         worker.train_hypernetwork()
 
-hypernetwork_learning_rate()
-hypernetwork_weight_init()
-hypernetwork_pretraining()
-hypernetwork_kl_diversity()
+#hypernetwork_learning_rate()
+#hypernetwork_weight_init()
+#hypernetwork_pretraining()
+#hypernetwork_kl_diversity()
 hypernetwork_cosine_diversity()
-hypernetwork_batch_size()
+#hypernetwork_batch_size()
 
 # Plotting
-#path = 'experiments/normal_run_learning_rate_ppo'
-#logger.plot_diversity(path, 'A2C PPO', 6, 'steps', 'reward')
+path = 'Graphgame/experiments/hypernetwork_learning_rate'
+logger.plot_diversity(path, 'A2C PPO entropy_loss', 4, 'steps', 'actor_loss')

@@ -127,23 +127,25 @@ def plot_diversity(path, titel, num, xlabel, ylabel):
             for row in reader:
                 if i == 0:
                     xs.append(int(row['generation']))
-                y.append(float(row['reward']))
+                y.append(float(row[ylabel]))
         ys.append(y)
 
-    ys1, ys2, ys3, ys4, ys5, ys6 = ys
+    #ys1, ys2, ys3, ys4, ys5, ys6 = ys
+
+    ys1, ys2, ys3, ys4 = ys
 
     plt.plot(xs, ys1, c='b')
     plt.plot(xs, ys2, c='g')
     plt.plot(xs, ys3, c='r')
     plt.plot(xs, ys4, c='c')
-    plt.plot(xs, ys5, c='m')
-    plt.plot(xs, ys6, c='y')
+    #plt.plot(xs, ys5, c='m')
+    #plt.plot(xs, ys6, c='y')
     plt.xlabel(str(xlabel))
     plt.ylabel(str(ylabel))
     plt.axes().yaxis.grid()
     plt.yticks([-1,-0.75,-0.5,-0.25,0,0.25,0.5,0.75,1])
     plt.title(str(titel))
-    plt.legend(['1e-4', '6e-5', '3e-5', '1e-5', '6e-6', '3e-6'])
+    plt.legend(['1e-4', '6e-5', '3e-5', '1e-5'])#, '6e-6', '3e-6'])
     '''
     fig, ax = plt.subplots()
 
@@ -183,7 +185,7 @@ def plot_diversity(path, titel, num, xlabel, ylabel):
     save_dir = os.path.dirname(path)
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    save_path = path + '/fig.png'
+    save_path = path + '/titel.png'
     plt.savefig(save_path)
 
 def plot_main(csv_path):

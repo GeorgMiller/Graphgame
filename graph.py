@@ -11,8 +11,8 @@ class Graph_Game:
         self.all_nodes = []
         self.directions = [[1,0], [0,1], [-1,0], [0,-1]]
         self.step = 0
-        self.hole_min = 3
-        self.hole_max = 5
+        self.hole_min = 2
+        self.hole_max = 4
         self.max_steps = 30
 
     def build(self):
@@ -51,7 +51,7 @@ class Graph_Game:
 
     def start(self):
 
-        self.state = self.all_nodes[0]
+        self.state = self.all_nodes[2]
         
         return self.hot_encoding(self.state)
 
@@ -59,7 +59,7 @@ class Graph_Game:
         
         self.step += 1
         done = False
-        reward = 0
+        reward = - 0.005
         direction = self.directions[action]
         next_state = [self.state[0] + direction[0], self.state[1] + direction[1]]
         neighbor = self.neighbors(self.state)
@@ -71,11 +71,11 @@ class Graph_Game:
                 done = True
                 self.step = 0
 
-        if self.state == [0,0]:
-            reward -= 0.1
+        #if self.state == [0,0]:
+        #    reward -= 0.1
 
         if self.step == self.max_steps:
-            reward -= 0.01
+            reward -= 1
             done = True
             self.step = 0
 

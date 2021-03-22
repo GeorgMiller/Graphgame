@@ -1,8 +1,6 @@
 import tensorflow as tf 
 import keras
 import numpy as np 
-import sklearn.metrics as metrics
-import scipy
 from keras.layers import Dense
 
 import graph 
@@ -41,11 +39,11 @@ class Agent():
 
         # These are the hyperparameters which wont be trained (for now)
         self.seed = 42
-        self.input_noise_size = 100
+        self.input_noise_size = 2
         self.gamma = 0.99
         self.zero_fixer = 1e-9
         self.training_steps = 7500
-        self.graph = graph.Graph_Game(8,[[7,7]])
+        self.graph = graph.Graph_Game(6,[[5,5]])
 
         self.scores, self.average = [], []
         self.left, self.right, self.left_average, self.right_average = [],[],[],[]
@@ -56,6 +54,7 @@ class Agent():
 
         self.lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(self.learning_rate,self.mini_batch_size*self.epochs,self.decay_rate)
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr_schedule)
+
 
         self.logger = logger.Logger(self.path, self.row)
 
@@ -252,7 +251,7 @@ class Agent():
                 left, right = self.left_average[-1], self.right_average[-1] 
                 self.logger.log_performance(step, winrate, loss_actor.numpy(), loss_critic.numpy(), entropy_loss.numpy(), 0, 0, \
                     self.optimizer._decayed_lr(tf.float32).numpy(), left, right, 0, 0, self.row)
-                print('values', self.values[0:5],'predictions', self.predictions[0:5])
+                print('values', self.values[0:5],'predictions', self.predictions)
 
         self.logger.close_files()
 
@@ -304,7 +303,7 @@ class Agent():
 
         # Before the training loop is entered, a first set of workers needs to be generated. Otherwise the loop for training 
         # with tf.GradientTape() can't track the gradients
-        z = np.random.uniform(low = -1, high = 1, size = [self.batch_size,300])
+        z = np.random.uniform(low = -1, high = 1, size = [self.batch_size,2])
         w1c, w1a, w2, w3, w4, w5 = self.hypernetwork(z,self.batch_size)
 
         # Reshape it for actor and critic
@@ -324,6 +323,8 @@ class Agent():
                 
                 self.set_weights(weights_actor, weights_critic, thread)
                 self.play_game(thread)
+            
+            z = np.random.uniform(low = -0.1, high = 0.1, size = [self.batch_size,2])
 
             # Now train hypernetwork for each worker for predefined number of epochs
             for e in range(self.epochs):
@@ -334,7 +335,6 @@ class Agent():
                     # Also make new lists for the cosine calculation of the probabilites
                     self.cosine_probs = [[] for _ in range(self.batch_size)] 
                     self.loss_acc = 0
-                    z = np.random.uniform(low = -1, high = 1, size = [self.batch_size,300])
                     w1c, w1a, w2, w3, w4, w5 = self.hypernetwork(z,self.batch_size)
                     
                     # Reshape it for actor and critic
@@ -360,12 +360,13 @@ class Agent():
                         if self.kl_diversity:
                             self.loss_div = kl * self.lamBda
                         elif self.cosine_diversity:
+                            cos  = tf.dtypes.cast(cos, tf.float32)
                             self.loss_div = cos * self.lamBda
                         else:
                             self.loss_div = tf.constant(0.)
 
                         # And the overall loss is:
-                        loss = self.loss_acc + self.loss_div    
+                        loss = self.loss_div + self.loss_acc    
 
                     # Otherwise the diversity loss term is set to zero
                     else:
@@ -384,7 +385,7 @@ class Agent():
                 left, right = self.left_average[-1], self.right_average[-1] 
                 self.logger.log_performance(step, winrate, self.loss_actor.numpy(), self.loss_critic.numpy(), self.entropy_loss.numpy(), self.loss_div.numpy(), loss.numpy(), \
                     self.optimizer._decayed_lr(tf.float32).numpy(), left, right, kl.numpy(), cos.numpy(), self.row)
-                print('values', self.values[0:5],'predictions', self.predictions[0:5])
+                print('values', self.values[0:5],'predictions', self.predictions)
 
         # Saving + End    
         self.hypernetwork.save_weights('{}/hypernetwork_{}_{}.h5'.format(self.path,self.row,self.score))
@@ -459,18 +460,19 @@ class Agent():
 
     def cosine_similarity_actions(self):
 
-        cosine_actions = np.zeros([self.batch_size, self.batch_size])
-
+        #cosine_actions = tf.zeros([self.batch_size, self.batch_size])
+        cosine_actions = 0
         for i in range(self.batch_size):
             for j in range(self.batch_size):
                 score = 0
                 v1, v2 = self.cosine_probs[i], self.cosine_probs[j]
         
-                for x in range(10):
+                for x in range(5):
                     score += self.cos_between(v1[x],v2[x])
-
-                cosine_actions[i][j] = score
-                cosine_actions[j][i] = cosine_actions[i][j]
+                
+                cosine_actions += score
+                #cosine_actions[i][j] = score
+                #cosine_actions[j][i] = cosine_actions[i][j]
 
         return tf.reduce_sum(cosine_actions)
 
@@ -544,16 +546,18 @@ class Agent():
 
     def discounted_r(self, reward):
 
-        gamma = 0.99   
+        gamma = 0.95   
         running_add = 0
         discounted_r = np.zeros(len(reward))
-
+        running_add = 0
         for i in reversed(range(0,len(reward))):
-            if reward[i] != 0: 
-                running_add = 0
+            
             running_add = running_add * gamma + reward[i]
             discounted_r[i] = running_add
 
+        #discounted_r -= np.mean(discounted_r) # normalizing the result
+        #discounted_r /= np.std(discounted_r) + self.zero_fixer
+       
         return discounted_r
 
     def create_actor(self):
@@ -582,7 +586,7 @@ class Agent():
     def evaluate_actions(self, weights_actor, weights_critic):
         
         idx = np.random.randint(0,self.batch_size)
-        states = self.memory[idx][0][0:10]
+        states = self.memory[idx][0][0:5]
 
         for num in range(self.batch_size):
 
